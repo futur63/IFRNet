@@ -76,9 +76,10 @@ def random_reverse_time(img0, imgt, img1, flow, p=0.5):
 
 
 class Vimeo90K_Train_Dataset(Dataset):
-    def __init__(self, dataset_dir='/home/ltkong/Datasets/Vimeo90K/vimeo_triplet', augment=True):
+    def __init__(self, dataset_dir='../Dataset/vimeo_triplet', augment=True, use_flow_distilation=False):
         self.dataset_dir = dataset_dir
         self.augment = augment
+        self.use_flow_distilation = use_flow_distilation
         self.img0_list = []
         self.imgt_list = []
         self.img1_list = []
@@ -102,11 +103,16 @@ class Vimeo90K_Train_Dataset(Dataset):
         img0 = read(self.img0_list[idx])
         imgt = read(self.imgt_list[idx])
         img1 = read(self.img1_list[idx])
-        flow_t0 = read(self.flow_t0_list[idx])
-        flow_t1 = read(self.flow_t1_list[idx])
-        flow = np.concatenate((flow_t0, flow_t1), 2).astype(np.float64)
+        if self.use_flow_distilation:
+            flow_t0 = read(self.flow_t0_list[idx])
+            flow_t1 = read(self.flow_t1_list[idx])
+            flow = np.concatenate((flow_t0, flow_t1), 2).astype(np.float64)
+        else:
+            # flow shape: (H, W, 4) for compatibility
+            h, w, _ = img0.shape
+            flow = np.zeros((h, w, 4), dtype=np.float32)
 
-        if self.augment == True:
+        if self.augment == True or self.use_flow_distilation:
             img0, imgt, img1, flow = random_resize(img0, imgt, img1, flow, p=0.1)
             img0, imgt, img1, flow = random_crop(img0, imgt, img1, flow, crop_size=(224, 224))
             img0, imgt, img1, flow = random_reverse_channel(img0, imgt, img1, flow, p=0.5)
@@ -121,12 +127,13 @@ class Vimeo90K_Train_Dataset(Dataset):
         flow = torch.from_numpy(flow.transpose((2, 0, 1)).astype(np.float32))
         embt = torch.from_numpy(np.array(1/2).reshape(1, 1, 1).astype(np.float32))
 
-        return img0, imgt, img1, flow, embt
+        return img0, img1, imgt, flow, embt
 
 
 class Vimeo90K_Test_Dataset(Dataset):
-    def __init__(self, dataset_dir='/home/ltkong/Datasets/Vimeo90K/vimeo_triplet'):
+    def __init__(self, dataset_dir='../Dataset/vimeo_triplet', use_flow_distilation=False):
         self.dataset_dir = dataset_dir
+        self.use_flow_distilation = use_flow_distilation
         self.img0_list = []
         self.imgt_list = []
         self.img1_list = []
@@ -150,17 +157,21 @@ class Vimeo90K_Test_Dataset(Dataset):
         img0 = read(self.img0_list[idx])
         imgt = read(self.imgt_list[idx])
         img1 = read(self.img1_list[idx])
-        flow_t0 = read(self.flow_t0_list[idx])
-        flow_t1 = read(self.flow_t1_list[idx])
-        flow = np.concatenate((flow_t0, flow_t1), 2)
+        if self.use_flow_distilation:
+            flow_t0 = read(self.flow_t0_list[idx])
+            flow_t1 = read(self.flow_t1_list[idx])
+            flow = np.concatenate((flow_t0, flow_t1), 2)
+        else:
+            h, w, _ = img0.shape
+            flow = np.zeros((h, w, 4), dtype=np.float32)
 
         img0 = torch.from_numpy(img0.transpose((2, 0, 1)).astype(np.float32) / 255.0)
         imgt = torch.from_numpy(imgt.transpose((2, 0, 1)).astype(np.float32) / 255.0)
         img1 = torch.from_numpy(img1.transpose((2, 0, 1)).astype(np.float32) / 255.0)
         flow = torch.from_numpy(flow.transpose((2, 0, 1)).astype(np.float32))
         embt = torch.from_numpy(np.array(1/2).reshape(1, 1, 1).astype(np.float32))
-        
-        return img0, imgt, img1, flow, embt
+
+        return img0, img1, imgt, flow, embt
 
 
 
