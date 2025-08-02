@@ -1,3 +1,6 @@
+import os, sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -83,3 +86,16 @@ class Model(nn.Module):
         loss_2 = 0.25 * self.l1_loss(img2_pred - gt_2) + self.tr_loss(img2_pred, gt_2) + 0.75 * self.l1_loss(img2_pred_warp - gt_2)
         loss = 1.25 * loss_1 + 0.75 * loss_2
         return img1_pred, img2_pred, flow_0_1, flow_1_2, mask0, mask1, residual0, residual2, loss 
+
+def main():
+    model = Model()
+    img0 = torch.randn(1, 3, 256, 256)
+    img1 = torch.randn(1, 3, 256, 256)
+    embt = torch.randn(1, 1, 1, 1)
+
+    imgt_pred = model.inference(img0, img1, embt)
+    print(imgt_pred[0].shape)
+
+
+if __name__ == "__main__":
+    main()
